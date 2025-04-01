@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Article Recommender</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .input-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .results-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .recommendation-box {
+            flex: 1;
+            min-width: 300px;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .recommendation-box h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .recommendation-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .recommendation-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .recommendation-item:last-child {
+            border-bottom: none;
+        }
+        .score {
+            float: right;
+            color: #7f8c8d;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #7f8c8d;
+            display: none;
+        }
+        .error {
+            color: #e74c3c;
+            padding: 10px;
+            background-color: #fadbd8;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>News Article Recommender</h1>
+    
+    <div class="container">
+        <div class="input-section">
+            <div class="form-group">
+                <label for="id-type">Select ID Type:</label>
+                <select id="id-type">
+                    <option value="user">User ID</option>
+                    <option value="item">Content ID</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="id-value">Select ID:</label>
+                <select id="id-value">
+                    <option value="">-- Select an ID --</option>
+                </select>
+            </div>
+            
+            <button id="get-recommendations">Get Recommendations</button>
+            
+            <div class="error" id="error-message"></div>
+        </div>
+        
+        <div class="loading" id="loading-indicator">
+            Loading recommendations...
+        </div>
+        
+        <div class="results-section" id="results-container">
+            <div class="recommendation-box">
+                <h3>Collaborative Filtering Recommendations</h3>
+                <ul class="recommendation-list" id="collaborative-results">
+                    <li class="recommendation-item">No recommendations yet. Enter an ID and click "Get Recommendations".</li>
+                </ul>
+            </div>
+            
+            <div class="recommendation-box">
+                <h3>Content Filtering Recommendations</h3>
+                <ul class="recommendation-list" id="content-results">
+                    <li class="recommendation-item">No recommendations yet. Enter an ID and click "Get Recommendations".</li>
+                </ul>
+            </div>
+            
+            <div class="recommendation-box">
+                <h3>Azure ML Recommendations</h3>
+                <ul class="recommendation-list" id="azure-results">
+                    <li class="recommendation-item">No recommendations yet. Enter an ID and click "Get Recommendations".</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const getRecommendationsButton = document.getElementById('get-recommendations');
+            const idTypeSelect = document.getElementById('id-type');
+            const idValueSelect = document.getElementById('id-value');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const errorMessage = document.getElementById('error-message');
+            const collaborativeResults = document.getElementById('collaborative-results');
+            const contentResults = document.getElementById('content-results');
+            const azureResults = document.getElementById('azure-results');
+            
+            // Store valid IDs
+            let validIds = {
+                users: [],
+                items: [],
+                content: []
+            };
+            
+            // Fetch valid IDs when the page loads
+            fetchValidIds();
+            
+            // Update ID dropdown when ID type changes
+            idTypeSelect.addEventListener('change', updateIdDropdown);
+            
+            // Function to fetch valid IDs from the server
+            async function fetchValidIds() {
+                try {
+                    const response = await fetch('/api/recommendations/valid-ids');
+                    if (!response.ok) {
+                        throw new Error(`Error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    validIds = await response.json();
+                    updateIdDropdown();
+                } catch (error) {
+                    showError(`Failed to fetch valid IDs: ${error.message}`);
+                }
+            }
+            
+            // Function to update the ID dropdown based on the selected ID type
+            function updateIdDropdown() {
+                const idType = idTypeSelect.value;
+                idValueSelect.innerHTML = '<option value="">-- Select an ID --</option>';
+                
+                let idsToShow = [];
+                if (idType === 'user') {
+                    idsToShow = validIds.users || [];
+                } else if (idType === 'item') {
+                    // For item type, we can use both item IDs and content IDs
+                    idsToShow = [...(validIds.items || []), ...(validIds.content || [])];
+                }
+                
+                // Add options to the dropdown
+                idsToShow.forEach(id => {
+                    const option = document.createElement('option');
+                    option.value = id;
+                    option.textContent = id;
+                    idValueSelect.appendChild(option);
+                });
+            }
+            
+            getRecommendationsButton.addEventListener('click', async function() {
+                const idType = idTypeSelect.value;
+                const idValue = idValueSelect.value.trim();
+                
+                if (!idValue) {
+                    showError('Please enter an ID value');
+                    return;
+                }
+                
+                // Clear previous results and show loading indicator
+                collaborativeResults.innerHTML = '';
+                contentResults.innerHTML = '';
+                azureResults.innerHTML = '';
+                errorMessage.style.display = 'none';
+                loadingIndicator.style.display = 'block';
+                
+                try {
+                    // Call the API to get recommendations from all models
+                    const response = await fetch(`/api/recommendations/all/${idValue}?type=${idType}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Display collaborative filtering recommendations
+                    if (data.collaborative && data.collaborative.length > 0) {
+                        displayRecommendations(data.collaborative, collaborativeResults);
+                    } else {
+                        collaborativeResults.innerHTML = '<li class="recommendation-item">No recommendations found</li>';
+                    }
+                    
+                    // Display content filtering recommendations
+                    if (data.content && data.content.length > 0) {
+                        displayRecommendations(data.content, contentResults);
+                    } else {
+                        contentResults.innerHTML = '<li class="recommendation-item">No recommendations found</li>';
+                    }
+                    
+                    // Display Azure ML recommendations
+                    if (data.azure && data.azure.length > 0) {
+                        displayRecommendations(data.azure, azureResults);
+                    } else {
+                        azureResults.innerHTML = '<li class="recommendation-item">No recommendations found</li>';
+                    }
+                } catch (error) {
+                    showError(`Failed to get recommendations: ${error.message}`);
+                    
+                    // Set default "no results" message
+                    collaborativeResults.innerHTML = '<li class="recommendation-item">Error fetching recommendations</li>';
+                    contentResults.innerHTML = '<li class="recommendation-item">Error fetching recommendations</li>';
+                    azureResults.innerHTML = '<li class="recommendation-item">Error fetching recommendations</li>';
+                } finally {
+                    // Hide loading indicator
+                    loadingIndicator.style.display = 'none';
+                }
+            });
+            
+            function displayRecommendations(recommendations, container) {
+                container.innerHTML = '';
+                
+                recommendations.forEach(rec => {
+                    const item = document.createElement('li');
+                    item.className = 'recommendation-item';
+                    
+                    // Format the recommendation item based on available properties
+                    let itemText = `Content ID: ${rec.contentId || rec.itemId || 'Unknown'}`;
+                    
+                    if (rec.score !== undefined) {
+                        const scoreSpan = document.createElement('span');
+                        scoreSpan.className = 'score';
+                        scoreSpan.textContent = `Score: ${parseFloat(rec.score).toFixed(2)}`;
+                        item.appendChild(scoreSpan);
+                    }
+                    
+                    if (rec.reason) {
+                        itemText += `<br><small>${rec.reason}</small>`;
+                    }
+                    
+                    item.innerHTML += itemText;
+                    container.appendChild(item);
+                });
+            }
+            
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                loadingIndicator.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
