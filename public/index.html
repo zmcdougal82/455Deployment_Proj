@@ -255,9 +255,12 @@
                     }
                     
                     // Display content filtering recommendations
+                    console.log('Content filtering data:', data.content);
                     if (data.content && data.content.length > 0) {
+                        console.log('Content filtering recommendations found:', data.content.length);
                         displayRecommendations(data.content, contentResults);
                     } else {
+                        console.log('No content filtering recommendations found');
                         contentResults.innerHTML = '<li class="recommendation-item">No recommendations found</li>';
                     }
                     

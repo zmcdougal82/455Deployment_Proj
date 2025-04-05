@@ -137,7 +137,7 @@ class ContentFilteringModel:
 if __name__ == "__main__":
     # Define paths
     DATA_PATH = 'shared_articles.csv'
-    MODEL_PATH = 'models/content_model.sav'
+    MODEL_PATH = 'models/content_filtering.sav'
     
     # Load only necessary columns to save memory
     print("Loading data...")

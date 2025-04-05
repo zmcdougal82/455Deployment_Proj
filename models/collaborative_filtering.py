@@ -30,42 +30,25 @@ def get_recommendations(model, id_value, id_type='item', top_n=5):
     Returns:
     - List of recommended item IDs with scores
     """
-    try:
-        # Convert ID to string to ensure consistent handling
-        id_value = str(id_value)
-        
-        # Redirect model's print statements to stderr
-        original_stdout = sys.stdout
-        sys.stdout = sys.stderr
-        
-        # Use the appropriate model method based on id_type
-        if id_type == 'user':
-            # Get recommendations for a user
-            recommendations = model.get_user_recommendations(id_value, top_n)
-        else:
-            # Get similar items
-            recommendations = model.get_similar_items(id_value, top_n)
-        
-        # Restore stdout
-        sys.stdout = original_stdout
-        
-        # If no recommendations were found, return fallback recommendations
-        if not recommendations:
-            print(f"No recommendations found for {id_type} {id_value}", file=sys.stderr)
-            return [
-                {"contentId": f"fallback-{i}", "score": 0.5, "reason": f"Fallback recommendation for {id_type} {id_value}"} 
-                for i in range(top_n)
-            ]
-        
-        return recommendations
-    except Exception as e:
-        print(f"Error getting recommendations: {e}", file=sys.stderr)
-        # Even if there's an error, return some fallback recommendations
-        # so the frontend doesn't break
-        return [
-            {"contentId": f"fallback-{i}", "score": 0.5, "reason": "Fallback recommendation"} 
-            for i in range(top_n)
-        ]
+    # Convert ID to string to ensure consistent handling
+    id_value = str(id_value)
+    
+    # Redirect model's print statements to stderr
+    original_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    
+    # Use the appropriate model method based on id_type
+    if id_type == 'user':
+        # Get recommendations for a user
+        recommendations = model.get_user_recommendations(id_value, top_n)
+    else:
+        # Get similar items
+        recommendations = model.get_similar_items(id_value, top_n)
+    
+    # Restore stdout
+    sys.stdout = original_stdout
+    
+    return recommendations
 
 def main():
     """Main function to handle command line arguments and return recommendations as JSON"""

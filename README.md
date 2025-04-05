@@ -44,7 +44,7 @@ const AZURE_ML_KEY = 'YOUR_AZURE_ML_API_KEY';
 
 Place your trained model files in the `models` directory:
 - `collaborative_model.sav` - Your collaborative filtering model
-- `content_model.sav` - Your content filtering model
+- `content_filtering.sav` - Your content filtering model
 
 ### 5. Start the Application
 
@@ -72,7 +72,7 @@ news_recommender/
 │   ├── collaborative_filtering.py
 │   ├── content_filtering.py
 │   ├── collaborative_model.sav  # Your saved collaborative model
-│   └── content_model.sav        # Your saved content model
+│   └── content_filtering.sav    # Your saved content model
 ├── routes/                 # Express routes
 │   └── recommendations.js  # API endpoints for recommendations
 ├── app.js                  # Main application file

@@ -41,7 +41,7 @@ if __name__ == "__main__":
     
     # Test content model
     print("\nTesting content model...")
-    content_success = test_load_model('models/content_model.sav')
+    content_success = test_load_model('models/content_filtering.sav')
     
     # Summary
     print("\nSummary:")

@@ -152,12 +152,34 @@ router.get('/all/:id', async (req, res) => {
     const id = req.params.id;
     const isUser = req.query.type === 'user';
     
-    // Make parallel requests to all three recommendation endpoints
-    const [collaborativeResponse, contentResponse, azureResponse] = await Promise.all([
+    // Prepare requests array
+    const requests = [
       axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/collaborative/${id}?type=${isUser ? 'user' : 'item'}`),
-      axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/content/${id}`),
       axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/azure/${id}?type=${isUser ? 'user' : 'item'}`)
-    ]);
+    ];
+    
+    // Get valid IDs to check if the ID is in the content IDs list
+    const validIdsResponse = await getValidIds();
+    const contentIds = validIdsResponse.content || [];
+    
+    // Only add content filtering request if the ID is in the content IDs list
+    let contentResponse = { data: [] };
+    if (contentIds.includes(id)) {
+      // For content IDs, we can get content-based recommendations
+      try {
+        const contentFilteringResponse = await axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/content/${id}`);
+        contentResponse = contentFilteringResponse;
+      } catch (error) {
+        console.error('Error getting content filtering recommendations:', error);
+      }
+    }
+    
+    // Make parallel requests to the recommendation endpoints
+    const responses = await Promise.all(requests);
+    
+    // Extract responses
+    const collaborativeResponse = responses[0];
+    const azureResponse = responses[1];
     
     // Combine all recommendations
     const recommendations = {

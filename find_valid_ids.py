@@ -26,7 +26,7 @@ def main():
     
     # Load the content model
     print("\nLoading content model...")
-    with open('models/content_model.sav', 'rb') as f:
+    with open('models/content_filtering.sav', 'rb') as f:
         content_model = pickle.load(f)
     
     # Get some valid content IDs
