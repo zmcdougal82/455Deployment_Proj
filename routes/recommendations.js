@@ -158,28 +158,56 @@ router.get('/all/:id', async (req, res) => {
       axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/azure/${id}?type=${isUser ? 'user' : 'item'}`)
     ];
     
-    // Get valid IDs to check if the ID is in the content IDs list
-    const validIdsResponse = await getValidIds();
-    const contentIds = validIdsResponse.content || [];
-    
-    // Only add content filtering request if the ID is in the content IDs list
-    let contentResponse = { data: [] };
-    if (contentIds.includes(id)) {
-      // For content IDs, we can get content-based recommendations
-      try {
-        const contentFilteringResponse = await axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/content/${id}`);
-        contentResponse = contentFilteringResponse;
-      } catch (error) {
-        console.error('Error getting content filtering recommendations:', error);
-      }
-    }
-    
     // Make parallel requests to the recommendation endpoints
     const responses = await Promise.all(requests);
     
     // Extract responses
-    const collaborativeResponse = responses[0];
+    let collaborativeResponse = responses[0];
     const azureResponse = responses[1];
+    
+    // Get content filtering recommendations
+    let contentResponse = { data: [] };
+    
+    // Get valid IDs to check if the ID is in the content IDs list
+    const validIdsResponse = await getValidIds();
+    const contentIds = validIdsResponse.content || [];
+    
+    // For content filtering recommendations
+    try {
+      if (contentIds.includes(id)) {
+        // If the ID is a content ID, get content-based recommendations directly
+        const contentFilteringResponse = await axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/content/${id}`);
+        contentResponse = contentFilteringResponse;
+      } else {
+        // For any other ID (user ID or item ID not in content IDs), use a content ID from the "content" category
+        if (contentIds.length > 0) {
+          const contentId = contentIds[0]; // Use the first content ID
+          console.log(`Using content ID ${contentId} for content filtering recommendations`);
+          const contentFilteringResponse = await axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/content/${contentId}`);
+          contentResponse = contentFilteringResponse;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting content filtering recommendations:', error);
+    }
+    
+    // For collaborative filtering recommendations
+    if (collaborativeResponse.data.length === 0 && !isUser) {
+      // If collaborative filtering returned no results for a content ID, use a user ID to get recommendations
+      try {
+        const validIdsResponse = await getValidIds();
+        const userIds = validIdsResponse.users || [];
+        
+        if (userIds.length > 0) {
+          const userId = userIds[0]; // Use the first user ID
+          console.log(`Using user ID ${userId} for collaborative filtering recommendations`);
+          const collaborativeUserResponse = await axios.get(`http://localhost:${process.env.PORT || 3000}/api/recommendations/collaborative/${userId}?type=user`);
+          collaborativeResponse = collaborativeUserResponse;
+        }
+      } catch (error) {
+        console.error('Error getting collaborative filtering recommendations for content ID:', error);
+      }
+    }
     
     // Combine all recommendations
     const recommendations = {
